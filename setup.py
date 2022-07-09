@@ -2,7 +2,7 @@ from setuptools import setup, find_packages
 
 setup(
     name='web_log_collector',
-    version='0.11',
+    version='0.12',
     packages=find_packages(),
     install_requires=[
         'fastapi',
