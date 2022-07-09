@@ -99,7 +99,7 @@ async def error(request: Request):
 
         LOG.info(
             msg='An error report was received.',
-            extra=dict(error_report=error_report) | log_dict_base
+            extra=dict(web_log_collector=dict(error_report=error_report)) | log_dict_base
         )
     except JSONDecodeError as e:
         LOG.warning(msg='An error report could not be decoded.', exc_info=e, extra=log_dict_base)
@@ -138,7 +138,7 @@ async def csp(request: Request):
         else:
             LOG.info(
                 msg='A CSP report was received.',
-                extra=dict(csp_report=csp_report.pop('csp-report')) | log_dict_base
+                extra=dict(web_log_collector=dict(csp_report=csp_report.pop('csp-report'))) | log_dict_base
             )
     except JSONDecodeError as e:
         LOG.warning(msg='A CSP report could not be decoded.', exc_info=e, extra=log_dict_base)
