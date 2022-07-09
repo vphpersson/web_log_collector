@@ -1,7 +1,6 @@
 #!/usr/bin/env python
 
 from logging import Logger, getLogger
-from asyncio import run as asyncio_run
 from typing import NoReturn, Type
 from logging.handlers import TimedRotatingFileHandler
 from logging import INFO, StreamHandler
@@ -16,7 +15,7 @@ from web_log_collector.api import API_ROUTER
 LOG: Logger = getLogger(__name__)
 
 
-async def main() -> NoReturn:
+def main() -> NoReturn:
     args: Type[WebLogCollectorArgumentParser.Namespace] = WebLogCollectorArgumentParser().parse_args()
 
     provider_name = 'Web Log Collector'
@@ -42,6 +41,7 @@ async def main() -> NoReturn:
 
     uvicorn_run(app=app, host=args.host, port=args.port)
 
+
 if __name__ == '__main__':
-    asyncio_run(main())
+    main()
 
