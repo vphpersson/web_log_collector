@@ -1,0 +1,8 @@
+fastapi
+starlette
+python-jose
+uvicorn
+git+https://github.com/vphpersson/ecs_py.git#egg=ecs_py
+git+https://github.com/vphpersson/ecs_tools_py.git#egg=ecs_tools_py
+git+https://github.com/vphpersson/http_lib.git#egg=http_lib
+git+https://github.com/vphpersson/typed_argument_parser.git#egg=typed_argument_parser
