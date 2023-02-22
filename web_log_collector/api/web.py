@@ -3,10 +3,10 @@ from typing import Any
 from json.decoder import JSONDecodeError
 
 from fastapi import APIRouter, Request, Response
-from starlette.status import HTTP_204_NO_CONTENT
-from ecs_py import Base, Source, Http, HttpRequest, Client, Server, Destination, User
+from fastapi.exceptions import HTTPException
+from starlette.status import HTTP_204_NO_CONTENT, HTTP_400_BAD_REQUEST, HTTP_500_INTERNAL_SERVER_ERROR
+from ecs_py import Base, Source, Http, HttpRequest, Client, Server, Destination
 from ecs_tools_py import entries_from_forwarded_header_value, entry_from_host_header_value, url_entry_from_string
-from jose.jwt import get_unverified_claims
 
 LOG: Logger = getLogger(__name__)
 
@@ -32,18 +32,18 @@ def _get_log_dict_base(request: Request) -> dict[str, Any]:
         http=Http(
             request=HttpRequest(
                 method=request.method,
-                referrer=request.headers.get(key='Referer')
+                referrer=request.headers.get('Referer')
             )
         )
     )
 
-    if host_value := request.headers.get(key='Host'):
+    if host_value := request.headers.get('Host'):
         base.destination = entry_from_host_header_value(
             host_header_value=host_value,
             entry_type=Destination
         )
 
-    if forwarded_value := request.headers.get(key='Forwarded'):
+    if forwarded_value := request.headers.get('Forwarded'):
         client_entry: Client | None
         server_entry: Server | None
         client_entry, server_entry = entries_from_forwarded_header_value(
@@ -55,25 +55,7 @@ def _get_log_dict_base(request: Request) -> dict[str, Any]:
         base.client = client_entry
         base.server = server_entry
 
-    user_name: str | None = None
-
-    try:
-        user_name = get_unverified_claims(token=request.cookies['refresh_token'])['sub']
-    except KeyError as e:
-        LOG.warning(msg='The refresh token does not have a "sub" claim.', exc_info=e, extra=base.to_dict())
-    except:
-        LOG.exception(
-            msg='An unexpected error occurred when attempting to read the "sub" claim from the refresh token.',
-            extra=base.to_dict()
-        )
-
-    if user_name:
-        base.user = User(name=user_name)
-        # TODO: Perform a better check.
-        if '@' in user_name:
-            base.user.email = user_name
-
-    return base.to_dict() | dict(_ecs_logger_handler_options=dict(merge_extra=True))
+    return dict(base) | dict(_ecs_logger_handler_options=dict(merge_extra=True))
 
 
 @ROUTER.post('/error')
@@ -103,6 +85,7 @@ async def error(request: Request):
         )
     except JSONDecodeError as e:
         LOG.warning(msg='An error report could not be decoded.', exc_info=e, extra=log_dict_base)
+        raise HTTPException(status_code=HTTP_400_BAD_REQUEST)
     except:
         LOG.exception(
             msg='An unexpected error occurred when attempting to obtain an error report.',
@@ -135,6 +118,7 @@ async def csp(request: Request):
 
         if not (isinstance(csp_report, dict) and 'csp-report' in csp_report):
             LOG.warning(msg='A malformed CSP report was received.', extra=log_dict_base)
+            raise HTTPException(status_code=HTTP_400_BAD_REQUEST)
         else:
             LOG.info(
                 msg='A CSP report was received.',
@@ -142,7 +126,9 @@ async def csp(request: Request):
             )
     except JSONDecodeError as e:
         LOG.warning(msg='A CSP report could not be decoded.', exc_info=e, extra=log_dict_base)
+        raise HTTPException(status_code=HTTP_400_BAD_REQUEST)
     except:
         LOG.exception(msg='An unexpected error occurred when attempting to obtain a CSP report.', extra=log_dict_base)
+        raise HTTPException(status_code=HTTP_500_INTERNAL_SERVER_ERROR, detail='An error occurred while parsing the data.')
 
     return Response(status_code=HTTP_204_NO_CONTENT)
